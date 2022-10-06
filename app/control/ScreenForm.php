@@ -54,7 +54,7 @@ class ScreenForm extends TCurtain
             $id->setEditable(false);
 
             //Monta o formulário
-            $this->form->addTab('Dados',                'mdi mdi-format-page-break');
+            $this->form->addTab('Formulário', 'mdi mdi-database');
             $this->form->addFieldLine($id,              'Código',           [80,  null]);
             $this->form->addFieldLine($name,            'Nome',             [400, null], true);
             $this->form->addFieldLine($controller,      'Controladora',     [400, null], true);
@@ -153,7 +153,7 @@ class ScreenForm extends TCurtain
             //Volta os dados para o form
             $this->form->setData($data);
             
-            $notify = new TNotify('success', 'Operação foi realizada');
+            $notify = new TNotify('Sucesso', 'Operação foi realizada');
             $notify->enableNote();
             $notify->setAutoRedirect(['ScreenList', 'onReload']);
             $notify->show();

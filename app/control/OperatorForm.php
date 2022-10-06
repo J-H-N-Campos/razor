@@ -1,15 +1,15 @@
 <?php
 /**
- * GroupForm
+ * OperatorForm
  *
  * @version    1.0
- * @date       23/08/2022
+ * @date       26/09/2022
  * @author     João De Campos
  * @copyright  Copyright (c) 2006-2014 Adianti Solutions Ltd. (http://www.adianti.com.br)
  * @license    http://www.adianti.com.br/framework-license
  */
  
-class GroupForm extends TCurtain
+class OperatorForm extends TCurtain
 {
     protected $form; 
     private   $db;
@@ -18,50 +18,64 @@ class GroupForm extends TCurtain
     /**
      * Classe construtora
      */
-    function __construct()
+    function __construct($param = null)
     {
         try
         {
-            parent::__construct();
+            parent::__construct($param);
             
             //Definições de conexão
             $this->db     = 'razor';
-            $this->model  = 'Group';
-            $this->parent = "GroupList";
+            $this->model  = 'Operator';
+            $this->parent = 'OperatorList';
+
+            if(!empty($param['return']))
+            {
+                parent::setActionClose([$param['return']]);
+            }
+            else
+            {
+                parent::setActionClose(['PersonList']);
+            }
+
+            TTransaction::open('razor');
 
             //Cria a form
-            $this->form  = new TFormStruct('form_group');
+            $this->form  = new TFormStruct('form_operator');
 
-            $criteria    = new TCriteria;
-            $criteria->add(new TFilter('fl_public', '=', 'f'));
-            
             //Entradas
-            $id          = new TEntry('id');
-            $name        = new TEntry('name');
-            $icon        = new TEntry('icon');
-            $screens_id  = new TDBOption('screens_id', $this->db, 'Screen', 'id', 'name', 'name', $criteria);
-            $fl_admin    = new TSwitch('fl_admin');
+            $person_name = new TEntry('person');
+            $person_individual_id = new TEntry('person_individual_id');
+     
+            //Funções das entradas
+            $person_individual_id->setEditable(false);
+            $person_name->setEditable(false);
 
-            //Propriedades das entradas
-            $id->setEditable(false);
-            $screens_id->setBoxSize(100);
-            $screens_id->enableMultipleCheck();
-            $screens_id->enableVerticalMode();
-
+            if(!empty($param['key']))
+            {
+                $person = Person::where('id', '=', $param['key'])->get();
+                $person = $person[0];
+                $person_name->setValue($person->name);
+                $person_individual_id->setValue($param['key']);
+            }
+            
             //Monta o formulário
             $this->form->addTab('Formulário', 'mdi mdi-database');
-            $this->form->addFieldLine($id,          'Código',           [80,  null]);
-            $this->form->addFieldLine($name,        'Nome',             [350, null], true);
-            $this->form->addFieldLine($fl_admin,    'Administrador');
-            $this->form->addFieldLine($screens_id,  'Telas');
+            $this->form->addFieldLine($person_individual_id, 'Id', [450, null]);
+            $this->form->addFieldLine($person_name, 'Pessoa', [450, null]);
 
             //Botões de ações
             $button = new TButtonPress('Gravar', 'mdi mdi-content-save-settings');
-            $button->setAction([$this, 'onSave', ['effect' => false]]);
-            $this->form->addButton($button);
+
+            if(!empty($param['return']))
+            {
+                $button->setAction([$this, 'onSave', ['effect' => false, 'return' => $param['return']]]);
+            }
+            else
+            {
+                $button->setAction([$this, 'onSave', ['effect' => false]]);
+            }
             
-            $button = new TButtonPress('Novo', 'mdi mdi-plus');
-            $button->setAction([$this, 'onEdit']);
             $this->form->addButton($button);
 
             //Gera a form
@@ -74,6 +88,8 @@ class GroupForm extends TCurtain
             $page_box->add($this->form);
             
             parent::add($page);
+            
+            TTransaction::close();
         }
         catch (Exception $e) 
         {
@@ -82,8 +98,6 @@ class GroupForm extends TCurtain
             $notify = new TNotify('Ops! Algo deu errado!', $e->getMessage());
             $notify->setIcon('mdi mdi-close');
             $notify->show();
-            
-            TTransaction::rollback();
         } 
     }
 
@@ -96,34 +110,44 @@ class GroupForm extends TCurtain
         try
         {
             TTransaction::open($this->db);
-
+            
             //Validação
             $this->form->validate();
-            
+
             //Recupera dados do Post;
             $data = $this->form->getData($this->model);
 
-            if($data->screens_id)
+            $person = Person::where('id', '=', $data->person_individual_id)->get();
+            $person = $person [0];
+            $user   = $person->getUser();
+
+            if($user)
             {
-                foreach ($data->screens_id as $key => $screen_id) 
-                {
-                    $data->addScreen(new Screen($screen_id));
-                }
+                $user_group = UserGroup::where('user_id', '=', $user->id)->get();
+                $user_group = $user_group[0];
+
+                $new_user_group = new UserGroup($user_group->id);
+                $new_user_group->user_id = $user->id;
+                $new_user_group->group_id = 1;
+                $new_user_group->store();
             }
-            
+            else
+            {
+                throw new Exception("Para criar o operador para essa pessoa, ela primeiramente precisa ser um usuário do sistema.");
+            }
+
             //Grava
             $data->store();
 
             TTransaction::close();
-           
+
             //Volta os dados para o form
             $this->form->setData($data);
 
             $notify = new TNotify('Sucesso', 'Operação foi realizada');
             $notify->enableNote();
-            $notify->setAutoRedirect(['GroupList', 'onReload']);
             $notify->show();
-
+            
             parent::closeWindow();
         }
         catch (Exception $e)
@@ -148,25 +172,9 @@ class GroupForm extends TCurtain
         {
             if (isset($param['key']))
             {
-                $key = $param['key'];
-                
                 TTransaction::open($this->db);
-                
-                $object = new $this->model($key);
 
-                $object->screens_id = $object->getScreens();
-                
-                if($object->screens_id)
-                {
-                    $array = [];
-
-                    foreach ($object->screens_id as $key => $screen) 
-                    {
-                        $array[$screen->id] = $screen->id;
-                    }
-
-                    $object->screens_id = $array;
-                }
+                $object = new $this->model($param['key']);
 
                 $this->form->setData($object);
                 

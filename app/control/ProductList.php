@@ -1,16 +1,16 @@
 <?php
 
 /**
- * ScreenList
+ * ProductList
  *
  * @version    1.0
- * @date       23/08/2022
+ * @date       23/09/2022
  * @author     João De Campos
  * @copyright  Copyright (c) 2006-2014 Adianti Solutions Ltd. (http://www.adianti.com.br)
  * @license    http://www.adianti.com.br/framework-license
  */
  
-class ScreenList extends TPage
+class ProductList extends TPage
 {
     private $loaded;
     private $datagrid;
@@ -30,25 +30,23 @@ class ScreenList extends TPage
             parent::__construct();
             
             //Definições de conexão
-            $this->db       = 'razor';
-            $this->model    = 'Screen';
-            $this->parent   = 'ScreenForm';
+            $this->db     = 'razor';
+            $this->model  = 'Product';
+            $this->parent = 'ProductForm';
             
             //Busca - Cria a form
-            $this->form     = new TFormStruct();
+            $this->form = new TFormStruct();
             $this->form->enablePostSession($this->model);
             
             //Busca - Entradas
-            $name           = new TEntry('name');
-            $menu_id        = new TDBCombo('menu_id', $this->db, 'Menu', 'id', 'name', 'name');
-            $controller     = new TEntry('controller');
-            
+            $Id     = new TEntry('id');
+            $name   = new TEntry('name');
+
             //Busca - Formulário
             $this->form->addTab('Dados',    'mdi mdi-chart-donut');
-            $this->form->addFieldLine($name,        'Nome',         [350, null]);
-            $this->form->addFieldLine($controller,  'Controladora', [350, null]);
-            $this->form->addFieldLine($menu_id,     'Menu',         [250, null]);
-            
+            $this->form->addFieldLine($Id,      'Id',   [80,  null], false, false, 1);
+            $this->form->addFieldLine($name,    'Nome', [300, null], false, false, 1);
+
             //Busca - Ações
             $button = new TButtonPress('Filtrar', 'mdi mdi-filter');
             $button->setAction([$this, 'onSearch']);
@@ -66,24 +64,16 @@ class ScreenList extends TPage
             $this->datagrid->setConfig(false);
             $this->datagrid->setDb($this->db);
 
-            $this->datagrid->enableCheck();
-            $this->datagrid->addCheckActionButton('Deletar',    'mdi mdi-delete',           [$this,     'onDelete']);
-            
-            $this->datagrid->addColumnReduced('fl_view_menu',   'mdi mdi-menu',             null,       'No menu');
-            $this->datagrid->addColumnReduced('fl_public',      'mdi mdi-earth',            null,       'Publico');
-            $this->datagrid->addColumnReduced('helper',         'mdi mdi-help-circle');
-            
-            $this->datagrid->addColumn('id',                    'Id',                       null,                   60);
-            $this->datagrid->addColumn('icon',                  '',                         ['Menu',    'getIcon'], 60);
-            $this->datagrid->addColumn('name',                  'Nome');
-            $this->datagrid->addColumn('menu_id',               'Menu',                     ['Menu',    'getName']);
-            $this->datagrid->addColumn('controller',            'Controladora');
+            //Colunas
+            $this->datagrid->addColumn('id',        'Id');
+            $this->datagrid->addColumn('name',      'Nome');
+            $this->datagrid->addColumn('price',     'Preço', ['TCoin', 'Tobr']);
+            $this->datagrid->addColumn('product',   'Produto/Serviço');
 
             //Ações
             $this->datagrid->addGroupAction('mdi mdi-dots-vertical');
-            $this->datagrid->addGroupActionButton('Editar',     'mdi mdi-pencil',           [$this->parent, 'onEdit']);
-            $this->datagrid->addGroupActionButton('Clonar',     'mdi mdi-content-copy',     [$this,         'clone']);
-            $this->datagrid->addGroupActionButton('Deletar',    'mdi mdi-delete',           [$this,         'onDelete']);
+            $this->datagrid->addGroupActionButton('Editar',     'mdi mdi-pencil',   [$this->parent, 'onEdit']);
+            $this->datagrid->addGroupActionButton('Deletar',    'mdi mdi-delete',   [$this, 'onDelete']);
 
             //Nevegação
             $this->page_navigation = new TPageNavigation;
@@ -97,7 +87,7 @@ class ScreenList extends TPage
             $page_box->add(ScreenHelper::getHeader(__CLASS__));
             $page_box->add($this->form);
             $page_box->add($this->datagrid);
-            $page_box->add($this->page_navigation);
+            $page_box->add($this->page_navigation, 'false');
             
             parent::add($page);
         }
@@ -108,6 +98,8 @@ class ScreenList extends TPage
             $notify = new TNotify('Ops! Algo deu errado!', $e->getMessage());
             $notify->setIcon('mdi mdi-close');
             $notify->show();
+            
+            TTransaction::rollback();
         }
     } 
     
@@ -121,19 +113,14 @@ class ScreenList extends TPage
         $session_name   = $this->form->getPostSessionName();
         $filters        = [];
 
-        if($data->name)
+        if($data->id)
         {
-            $filters[]  = new TFilter('name', ' ILIKE ', "NOESC: '%$data->name%'");
-        }
-        
-        if($data->menu_id)
-        {
-            $filters[]  = new TFilter('menu_id', ' = ', $data->menu_id);
+            $filters[]  = new TFilter('id', '=', $data->id);
         }
 
-        if($data->controller)
+        if($data->name)
         {
-            $filters[]  = new TFilter('controller', ' = ', $data->controller);
+            $filters[]  = new TFilter('name', 'ILIKE', "%$data->name%");
         }
         
         //Registra o filtro na sessão
@@ -191,7 +178,23 @@ class ScreenList extends TPage
                 //Percorre os resultados
                 foreach ($objects as $object)
                 {
-                    $this->datagrid->addItem($object);
+                    if($object->fl_product)
+                    {
+                        $object->product = TInterface::getBoxStatus('Produto', '#ffa500');
+                    }
+                    else
+                    {
+                        $object->product = TInterface::getBoxStatus('Serviço', '#808080');
+                    }
+
+                    if($object->fl_enable)
+                    {
+                        $this->datagrid->addItem($object);
+                    }
+                    else
+                    { 
+                        $this->datagrid->addItem($object, "background-color: #ffffff; opacity: 0.3;");
+                    }
                 }
             }
 
@@ -202,7 +205,6 @@ class ScreenList extends TPage
             $this->loaded = true;
             
             TTransaction::close();
-
         }
         catch (Exception $e)
         {
@@ -223,78 +225,24 @@ class ScreenList extends TPage
      */
     function onDelete($param)
     {
-        try
-        {
-            $data         = $this->datagrid->getData();
-            $param['ids'] = $data;
-
-            //Ação de delete
-            $action = new TAction([$this, 'delete']);
-            $action->setParameters($param);
-            
-            //Pergunta
-            $notify = new TNotify('Apagar registro', 'Você tem certeza que quer apagar este(s) registro(s)?');
-            $notify->setIcon('mdi mdi-help-circle-outline');
-            $notify->addButton('Sim', $action);
-            $notify->addButton('Não', null);
-            $notify->show();
-        }
-        catch (Exception $e)
-        {
-            ErrorService::send($e);
-
-            $notify = new TNotify('Ops! Algo deu errado!', $e->getMessage());
-            $notify->setIcon('mdi mdi-close');
-            $notify->show();
-        }
+        //Ação de delete
+        $action = new TAction([$this, 'delete']);
+        $action->setParameters($param);
+        
+        //Pergunta
+        $notify = new TNotify('Apagar registro', 'Você tem certeza que quer apagar este(s) registro(s)?');
+        $notify->setIcon('mdi mdi-help-circle-outline');
+        $notify->addButton('Sim', $action);
+        $notify->addButton('Não', null);
+        $notify->show();
     }
-
+    
+    /**
+     * Method Delete()
+     * Deleta o cadastro
+     * 
+     */
     function delete($param)
-    {
-        try
-        {
-            //Abre transação
-            TTransaction::open($this->db);
-
-            //Para lote
-            if(!empty($param['ids']))
-            {
-                foreach ($param['ids'] as $key => $value) 
-                {
-                    $object = new $this->model($value);
-                    $object->delete();
-                }
-            }
-            elseif(!empty($param['key']))
-            {
-                $object = new $this->model($param['key']);
-                $object->delete();
-            }
-            else
-            {
-                throw new Exception("Selecione algo para deletar!");
-            }
-
-            TTransaction::close();
-
-            $notify = new TNotify('Sucesso', 'Operação foi realizada');
-            $notify->enableNote();
-            $notify->setAutoRedirect([$this, 'onReload']);
-            $notify->show();
-        }
-        catch (Exception $e)
-        {
-            ErrorService::send($e);
-
-            $notify = new TNotify('Ops! Algo deu errado!', $e->getMessage());
-            $notify->setIcon('mdi mdi-close');
-            $notify->show();
-            
-            TTransaction::rollback();
-        }
-    }
-
-    function clone($param)
     {
         try
         {
@@ -302,7 +250,7 @@ class ScreenList extends TPage
             TTransaction::open($this->db);
             
             $object = new $this->model($param['key']);
-            $object->clone();  
+            $object->delete();  
             
             TTransaction::close();
 
@@ -323,7 +271,7 @@ class ScreenList extends TPage
             TTransaction::rollback();
         }
     }
-
+    
     /**
      * Method show()
      * Exibe conteúdos pertencentes a tela criada

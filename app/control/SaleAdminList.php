@@ -1,16 +1,18 @@
 <?php
 
+use Adianti\Widget\Form\TUniqueSearch;
+
 /**
- * GroupList
+ * SaleAdminList
  *
  * @version    1.0
- * @date       23/08/2022
+ * @date       30/09/2022
  * @author     João De Campos
  * @copyright  Copyright (c) 2006-2014 Adianti Solutions Ltd. (http://www.adianti.com.br)
  * @license    http://www.adianti.com.br/framework-license
  */
  
-class GroupList extends TPage
+class SaleAdminList extends TPage
 {
     private $loaded;
     private $datagrid;
@@ -31,27 +33,35 @@ class GroupList extends TPage
             
             //Definições de conexão
             $this->db     = 'razor';
-            $this->model  = 'Group';
-            $this->parent = 'GroupForm';
+            $this->model  = 'Sale';
             
             //Busca - Cria a form
             $this->form = new TFormStruct();
             $this->form->enablePostSession($this->model);
-            
+
             //Busca - Entradas
-            $name   = new TEntry('name');
-        
+            $product_id     = new TDBUniqueSearch('product_id',     $this->db, 'Product',   'id', 'name');
+            $person_id      = new TDBUniqueSearch('person_id',      $this->db, 'Person',    'id', 'name');
+            $operator_id    = new TUniqueSearch('operator_id');
+            $dt_service     = new TDate('dt_service');
+
+            $array_operators = Operator::getArrayOperators();
+            $operator_id->addItems($array_operators);
+            $operator_id->setMinLength(0);
+            $product_id->setMinLength(0);
+            $person_id->setMinLength(0);
+            $dt_service->setMask('dd/mm/yyyy');
+
             //Busca - Formulário
-            $this->form->addTab('Dados',    'mdi mdi-chart-donut');
-            $this->form->addFieldLine($name,  'Nome', [300, null]);
+            $this->form->addTab('Dados', 'mdi mdi-chart-donut');
+            $this->form->addFieldLine($product_id,  'Produto',          [300, null], false, false, 1);
+            $this->form->addFieldLine($person_id,   'Pessoa',           [300, null], false, false, 1);
+            $this->form->addFieldLine($operator_id, 'Operador',         [300, null], false, false, 1);
+            $this->form->addFieldLine($dt_service,  'Data do Serviço',  [120, null], false, false, 2);
 
             //Busca - Ações
             $button = new TButtonPress('Filtrar', 'mdi mdi-filter');
             $button->setAction([$this, 'onSearch']);
-            $this->form->addButton($button);
-
-            $button = new TButtonPress('Novo', 'mdi mdi-plus');
-            $button->setAction([$this->parent, 'onEdit']);
             $this->form->addButton($button);
 
             //Busca - Gera a forma
@@ -61,15 +71,14 @@ class GroupList extends TPage
             $this->datagrid = new TDataGridResponsive;
             $this->datagrid->setConfig(false);
             $this->datagrid->setDb($this->db);
-            
-            $this->datagrid->addColumn('id',    'Id');
-            $this->datagrid->addColumn('name',  'Nome');
 
-            //Ações
-            $this->datagrid->addGroupAction('mdi mdi-dots-vertical');
-            $this->datagrid->addGroupActionButton('Editar',     'mdi mdi-pencil',       [$this->parent, 'onEdit']);
-            $this->datagrid->addGroupActionButton('Deletar',    'mdi mdi-delete',       [$this,         'onDelete']);
-            $this->datagrid->addGroupActionButton('Clonar',     'mdi mdi-content-copy', [$this,         'clone']);
+            //Colunas
+            $this->datagrid->addColumnReduced('dt_service', 'mdi mdi-calendar-check', ['TDateService', 'timeStampToBr'], 'Data do serviço realizado');
+
+            $this->datagrid->addColumn('id',            'Id');
+            $this->datagrid->addColumn('product_id',    'Produto');
+            $this->datagrid->addColumn('person_id',     'Pessoa');
+            $this->datagrid->addColumn('operator_id',   'Operador');
 
             //Nevegação
             $this->page_navigation = new TPageNavigation;
@@ -109,11 +118,26 @@ class GroupList extends TPage
         $session_name   = $this->form->getPostSessionName();
         $filters        = [];
 
-        if($data->name)
+        if($data->dt_service)
         {
-            $filters[]  = new TFilter('name', ' ILIKE ', "NOESC: '%$data->name%'");
+            $filters[]  = new TFilter('dt_service::date', '=', $data->dt_service);
+        }
+
+        if($data->operator_id)
+        {
+            $filters[]  = new TFilter('operator_id', '=', $data->operator_id);
         }
         
+        if($data->person_id)
+        {
+            $filters[]  = new TFilter('person_id', '=', $data->person_id);
+        }
+
+        if($data->product_id)
+        {
+            $filters[]  = new TFilter('product_id', '=', $data->product_id);
+        }
+
         //Registra o filtro na sessão
         TSession::setValue("filters_{$session_name}", $filters);
 
@@ -164,11 +188,20 @@ class GroupList extends TPage
             $objects    = $repository->load($criteria, true);
             $this->datagrid->clear();
 
-            if ($objects)
+            if($objects)
             {
                 //Percorre os resultados
                 foreach ($objects as $object)
                 {
+                    $product            = $object->getProduct();
+                    $person             = $object->getPerson();
+                    $operator           = $object->getOperator();
+                    $person_operator    = $operator->getPersonOperator();
+
+                    $object->product_id     = $product->name;
+                    $object->person_id      = $person->name;
+                    $object->operator_id    = $person_operator->name;
+                    
                     $this->datagrid->addItem($object);
                 }
             }
@@ -193,95 +226,6 @@ class GroupList extends TPage
         }
     }
     
-    /**
-     * Method onDelete()
-     * Executa uma confirmação se tem ou não certeza antes de deletar
-     * 
-     */
-    function onDelete($param)
-    {
-        //Ação de delete
-        $action = new TAction([$this, 'delete']);
-        $action->setParameters($param);
-        
-        //Pergunta
-        $notify = new TNotify('Apagar registro', 'Você tem certeza que quer apagar este(s) registro(s)?');
-        $notify->setIcon('mdi mdi-help-circle-outline');
-        $notify->addButton('Sim', $action);
-        $notify->addButton('Não', null);
-        $notify->show();
-    }
-    
-    /**
-     * Method Delete()
-     * Deleta o cadastro
-     * 
-     */
-    function delete($param)
-    {
-        try
-        {
-            //Abre transação
-            TTransaction::open($this->db);
-            
-            $object = new $this->model($param['key']);
-            $object->delete();  
-            
-            TTransaction::close();
-
-            //Avisa que foi excluido
-            $notify = new TNotify('Sucesso', 'Operação foi realizada');
-            $notify->enableNote();
-            $notify->setAutoRedirect([$this, 'onReload']);
-            $notify->show();
-        }
-        catch (Exception $e)
-        {
-            ErrorService::send($e);
-
-            $notify = new TNotify('Ops! Algo deu errado!', $e->getMessage());
-            $notify->setIcon('mdi mdi-close');
-            $notify->show();
-            
-            TTransaction::rollback();
-        }
-    }
-
-    function clone($param)
-    {
-        try
-        {
-            //Abre transação
-            TTransaction::open($this->db);
-            
-            $object = new $this->model($param['key']);
-            $object->clone();  
-            
-            TTransaction::close();
-
-            //Avisa que foi excluido
-            $notify = new TNotify('Sucesso', 'Operação foi realizada');
-            $notify->enableNote();
-            $notify->setAutoRedirect([$this, 'onReload']);
-            $notify->show();
-        }
-        catch (Exception $e)
-        {
-            ErrorService::send($e);
-
-            $notify = new TNotify('Ops! Algo deu errado!', $e->getMessage());
-            $notify->setIcon('mdi mdi-close');
-            $notify->show();
-            
-            TTransaction::rollback();
-        }
-    }
-    
-    /**
-     * Method show()
-     * Exibe conteúdos pertencentes a tela criada
-     * 
-     */
     function show()
     {
         if (!$this->loaded)

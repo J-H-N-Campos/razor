@@ -42,6 +42,7 @@ class MenuList extends TPage
             $name   = new TEntry('name');
         
             //Busca - Formulário
+            $this->form->addTab('Dados',    'mdi mdi-chart-donut');
             $this->form->addFieldLine($name,  'Nome', [300, null]);
 
             //Busca - Ações
@@ -230,7 +231,7 @@ class MenuList extends TPage
             TTransaction::close();
 
             //Avisa que foi excluido
-            $notify = new TNotify('success', 'Operação foi realizada');
+            $notify = new TNotify('Sucesso', 'Operação foi realizada');
             $notify->enableNote();
             $notify->setAutoRedirect([$this, 'onReload']);
             $notify->show();

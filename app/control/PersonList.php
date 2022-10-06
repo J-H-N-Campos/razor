@@ -39,9 +39,9 @@ class PersonList extends TPage
             $this->form->enablePostSession($this->model);
             
             //Busca - Entradas
-            $phone          = new TEntry('phone');
-            $id             = new TDBUniqueSearch('id',         $this->db,  'Person',   'id', 'name',   'name');
-            $group_id       = new TDBUniqueSearch('group_id',   $this->db,  'Group',    'id', 'name',   'name');
+            $phone      = new TEntry('phone');
+            $id         = new TDBUniqueSearch('id',         $this->db,  'Person',   'id', 'name',   'name');
+            $group_id   = new TDBUniqueSearch('group_id',   $this->db,  'Group',    'id', 'name',   'name');
 
             $id->setMinLength(0);
             $id->disableIdSearch();
@@ -57,7 +57,7 @@ class PersonList extends TPage
             
             //Aba Usuário
             $this->form->addTab('Usuário',  'mdi mdi-account');
-            $this->form->addFieldLine($group_id,        'Grupo de usuário',     [300, null], false, null, 1);
+            $this->form->addFieldLine($group_id, 'Grupo de usuário', [300, null], false, null, 1);
 
             //Busca - Ações
             $button = new TButtonPress('Filtrar', 'mdi mdi-filter');
@@ -85,16 +85,23 @@ class PersonList extends TPage
             $this->datagrid->addColumn('phone', 'Telefone');
             $this->datagrid->addColumn('name',  'Tipo', [$this, 'getType']);
 
+            //pessoa
             $this->datagrid->addGroupAction('mdi mdi-dots-vertical');
-            $this->datagrid->addGroupActionButton('Editar',             'mdi mdi-pencil',       [$this->parent, 'onEdit'],   false,  'code');
-            $this->datagrid->addGroupActionButton('Deletar',            'mdi mdi-delete',       [$this, 'onDelete']);
-            $this->datagrid->addGroupActionButton('Criar usuário',      'mdi mdi-account-plus', [$this, 'onCreateUser']);
-            
-            //grupos de botões secundários
+            $this->datagrid->addGroupActionButton('Editar',         'mdi mdi-pencil',           ['PersonForm',   'onEdit'], false, 'code');
+            $this->datagrid->addGroupActionButton('Deletar',        'mdi mdi-delete',           [$this,          'onDelete']);
+            $this->datagrid->addGroupActionButton('Criar Usuário',  'mdi mdi-account-circle',   ['UserForm',     null, false, 'code']);
+            $this->datagrid->addGroupActionButton('Criar Operador', 'mdi mdi-account-hard-hat', ['OperatorForm', null, false, 'code']);
+
+            //usuarios
             $this->datagrid->addGroupAction('mdi mdi-account-circle');
-            $this->datagrid->addGroupActionButton('Editar acesso',      'mdi mdi-account-edit',     ['UserForm', 'onEdit',   ['return' => 'PersonList']]);
-            $this->datagrid->addGroupActionButton('Remover',            'mdi mdi-account-minus',    [$this, 'onRemoveUser']);
-            
+            $this->datagrid->addGroupActionButton('Editar Usuário',     'mdi mdi-account-edit',     ['UserForm', 'onEdit', ['return' => 'PersonList']]);
+            $this->datagrid->addGroupActionButton('Remover Usuário',    'mdi mdi-account-minus',    [$this, 'onRemoveUser']);
+            $this->datagrid->addGroupActionButton('Gerar Nova Senha',   'mdi mdi-reload',           [$this, 'onSendPassword']);
+
+            //operadores
+            $this->datagrid->addGroupAction('mdi mdi-account-hard-hat');
+            $this->datagrid->addGroupActionButton('Remover Operador',   'mdi mdi-account-minus',    [$this, 'onRemoveOperator']);
+
             //Nevegação
             $this->page_navigation = new TPageNavigation;
             $this->page_navigation->setAction(new TAction([$this, 'onReload']));
@@ -203,16 +210,49 @@ class PersonList extends TPage
                 //Percorre os resultados
                 foreach ($objects as $object)
                 {
+                    $user       = $object->getUser();
+                    $operator   = $object->getOperator();
+
+                    $btn_remove     = [];
+                    $btn_remove[]  = 'Deletar';
+
                     //Se tiver usuário
-                    $user = $object->getUser();
-                    
                     if($user)
                     {
-                        $this->datagrid->addItem($object, null, false, null, false, ['Criar usuário']);
+                        $btn_remove[] = 'Criar Usuário';
                     }
                     else
                     {
-                        $this->datagrid->addItem($object, null, false, null, false, ['Editar acesso', 'Remover', 'Senha provisória']);
+                        $btn_remove[] = 'Remover Usuário';
+                        $btn_remove[] = 'Gerar Nova Senha';
+                        $btn_remove[] = 'Editar Usuário';
+                    }
+
+                    //Tem operador
+                    if($operator)
+                    {
+                        $btn_remove[] = 'Criar Operador';
+                    }
+                    else
+                    {
+                        //Botões operador
+                        $btn_remove[] = 'Remover Operador';
+                    }
+
+                    if($user)
+                    {
+                        if($user->fl_on)
+                        {
+                            $this->datagrid->addItem($object, null, false, null, false, $btn_remove);
+                        }
+                        else
+                        {
+                            $this->datagrid->addItem($object, "background-color: #ffffff; opacity: 0.3;", false, null, false, $btn_remove);
+                        }
+                    }
+                    else
+                    {
+                        $this->datagrid->addItem($object, null, false, null, false, $btn_remove);
                     }
                 }
             }
@@ -293,7 +333,7 @@ class PersonList extends TPage
 
             TTransaction::close();
 
-            $notify = new TNotify('success', 'Operação foi realizada');
+            $notify = new TNotify('Sucesso', 'Operação foi realizada');
             $notify->enableNote();
             $notify->setAutoRedirect([$this, 'onReload']);
             $notify->show();
@@ -322,7 +362,7 @@ class PersonList extends TPage
             $action->setParameters($param);
             
             //Pergunta
-            $notify = new TNotify('Remover usuário', 'Você tem certeza que quer remover este usuário');
+            $notify = new TNotify('Remover Usuário', 'Você tem certeza que quer remover este usuário');
             $notify->setIcon('mdi mdi-help-circle-outline');
             $notify->addButton('Sim', $action);
             $notify->addButton('Não', null);
@@ -335,6 +375,71 @@ class PersonList extends TPage
             $notify = new TNotify('Ops! Algo deu errado!', $e->getMessage());
             $notify->setIcon('mdi mdi-close');
             $notify->show();
+        }
+    }
+
+    function onRemoveOperator($param)
+    {
+        try
+        {
+            $data         = $this->datagrid->getData();
+            $param['ids'] = $data;
+
+            //Ação de delete
+            $action = new TAction([$this, 'removeOperator']);
+            $action->setParameters($param);
+            
+            //Pergunta
+            $notify = new TNotify('Remover Operador', 'Você tem certeza que quer remover este operador');
+            $notify->setIcon('mdi mdi-help-circle-outline');
+            $notify->addButton('Sim', $action);
+            $notify->addButton('Não', null);
+            $notify->show();
+        }
+        catch (Exception $e)
+        {
+            ErrorService::send($e);
+
+            $notify = new TNotify('Ops! Algo deu errado!', $e->getMessage());
+            $notify->setIcon('mdi mdi-close');
+            $notify->show();
+        }
+    }
+
+    function removeOperator($param)
+    {
+        try
+        {
+            //Abre transação
+            TTransaction::open($this->db);
+
+
+            if(!empty($param['key']))
+            {
+                $object = new $this->model($param['key']);
+                $object->removeOperator();
+            }
+            else
+            {
+                throw new Exception("Selecione algo para remover!");
+            }
+
+            TTransaction::close();
+
+            $notify = new TNotify('Sucesso', 'Operação foi realizada');
+            $notify->enableNote();
+            $notify->setAutoRedirect([$this, 'onReload']);
+            $notify->show();
+        }
+        catch (Exception $e)
+        {
+            ErrorService::send($e);
+
+            $notify = new TNotify('Ops! Algo deu errado!', $e->getMessage());
+            $notify->setIcon('mdi mdi-close');
+            $notify->show();
+            
+            TTransaction::rollback();
         }
     }
     
@@ -394,7 +499,7 @@ class PersonList extends TPage
 
             TTransaction::close();
 
-            $notify = new TNotify('success', 'Operação foi realizada');
+            $notify = new TNotify('Sucesso', 'Operação foi realizada');
             $notify->enableNote();
             $notify->setAutoRedirect([$this, 'onReload']);
             $notify->show();
@@ -418,7 +523,6 @@ class PersonList extends TPage
             //Abre transação
             TTransaction::open($this->db);
 
-
             if(!empty($param['key']))
             {
                 $object = new $this->model($param['key']);
@@ -431,71 +535,7 @@ class PersonList extends TPage
 
             TTransaction::close();
 
-            $notify = new TNotify('success', 'Operação foi realizada');
-            $notify->enableNote();
-            $notify->setAutoRedirect([$this, 'onReload']);
-            $notify->show();
-        }
-        catch (Exception $e)
-        {
-            ErrorService::send($e);
-
-            $notify = new TNotify('Ops! Algo deu errado!', $e->getMessage());
-            $notify->setIcon('mdi mdi-close');
-            $notify->show();
-            
-            TTransaction::rollback();
-        }
-    }
-
-    function onCreateUser($param)
-    {
-        try
-        {
-            $data         = $this->datagrid->getData();
-            $param['ids'] = $data;
-
-            //Ação de delete
-            $action = new TAction([$this, 'createUser']);
-            $action->setParameters($param);
-            
-            //Pergunta
-            $notify = new TNotify('Criar usuário', 'Você tem certeza que quer criar usuário para esta pessoa?');
-            $notify->setIcon('mdi mdi-help-circle-outline');
-            $notify->addButton('Sim', $action);
-            $notify->addButton('Não', null);
-            $notify->show();
-        }
-        catch (Exception $e)
-        {
-            ErrorService::send($e);
-
-            $notify = new TNotify('Ops! Algo deu errado!', $e->getMessage());
-            $notify->setIcon('mdi mdi-close');
-            $notify->show();
-        }
-    }
-    
-    function createUser($param)
-    {
-        try
-        {
-            //Abre transação
-            TTransaction::open($this->db);
-
-            if(!empty($param['key']))
-            {
-                $object = new $this->model($param['key']);
-                $object->createUser();
-            }
-            else
-            {
-                throw new Exception("Selecione algo para criar!");
-            }
-
-            TTransaction::close();
-
-            $notify = new TNotify('success', 'Operação foi realizada');
+            $notify = new TNotify('Sucesso', 'Operação foi realizada');
             $notify->enableNote();
             $notify->setAutoRedirect([$this, 'onReload']);
             $notify->show();

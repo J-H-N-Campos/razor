@@ -20,10 +20,10 @@ class LoginForm extends TPage
      */
     function __construct()
     {
+        parent::__construct();
+        
         try
         {
-            parent::__construct();
-            
             //Definições de conexão
             $this->db     = 'razor';
             $this->model  = 'Menu';
@@ -35,9 +35,7 @@ class LoginForm extends TPage
                 TServer::redirect('index.php?class=Home');
             }
             else
-            {
-                TTransaction::open('razor');
-                
+            {                
                 //Cria a form
                 $this->form = new TFormStruct();
                 $this->form->setAligh('center');
@@ -56,33 +54,19 @@ class LoginForm extends TPage
                 $this->form->addFieldLine($login,       null,   [300, null], true);
                 $this->form->addFieldLine($password,    null,   [300, null], true);
                 
-                $content_buttons = new TElement('div');
-                $content_buttons->class = "content-buttons";
-
                 //Botões de ações
                 $button = new TButtonPress('Entrar', 'mdi mdi-subdirectory-arrow-right');
                 $button->setAction([$this, 'onLogin']);
-                $content_buttons->add($button);
+                $this->form->addButton($button);
 
                 $button = new TButtonPress('mdi mdi-lock-plus', 'Esqueci minha senha');
-                $button->setAction(['RecoveryForm',   'onReload']);
-                $content_buttons->add($button);
+                $button->setAction(['RecoveryForm', 'onReload']);
+                $this->form->addButton($button);
 
                 //Gera a form
                 $this->form->generate();
-                
-                //Estrutura da pagina
-                $page = new TPageContainer();
-                $page_box = $page->createBox(false);
-                $page_box->add(ScreenHelper::getHeader(__CLASS__));
-                $page_box->add("<br/>");
-                $page_box->add($this->form);
-                $page_box->add($content_buttons);
-                $page_box->add("<div style='text-align: center;margin-top: 8px;'>by Razor Tecnologia</br>© 2021</div>");
-                
-                TTransaction::close();
-                
-                parent::add($page);
+                   
+                parent::add($this->form);
             }
         }
         catch (Exception $e) 

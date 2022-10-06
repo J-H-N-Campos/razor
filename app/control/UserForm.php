@@ -27,15 +27,15 @@ class UserForm extends TCurtain
             //Definições de conexão
             $this->db     = 'razor';
             $this->model  = 'User';
-            $this->parent = "UserList";
-            
+            $this->parent = 'UserList';
+
             if(!empty($param['return']))
             {
                 parent::setActionClose([$param['return']]);
             }
             else
             {
-                parent::setActionClose([$this->parent]);
+                parent::setActionClose(['PersonList']);
             }
 
             TTransaction::open('razor');
@@ -66,9 +66,14 @@ class UserForm extends TCurtain
             $groups_id->addItems(Group::getArray());
             $groups_id->enableMultipleCheck(true);
             $groups_id->setBoxSize(110);
+
+            if(!empty($param['key']))
+            {
+                $id->setValue($param['key']);
+            }
             
             //Monta o formulário
-            $this->form->addTab('Dados');
+            $this->form->addTab('Formulário', 'mdi mdi-database');
             $this->form->addFieldLine($id,              'Pessoa',           [450, null]);
             $this->form->addFieldLine($pip_code,        'Pip Code',         [450, null]);
             $this->form->addFieldLine($groups_id,       'Grupos de acesso', [700, null]);
@@ -130,10 +135,11 @@ class UserForm extends TCurtain
             //Validação
             $this->form->validate();
 
-            $param                = [];
-            $param['id']          = $data->id;
-            $param['groups']      = [];
-            $param['pip_code']    = $data->pip_code;
+            $param              = [];
+            $param['id']        = $data->id;
+            $param['groups']    = [];
+            $param['pip_code']  = $data->pip_code;
+            $param['fl_on']     = $data->fl_on;
 
             //Grupos
             if($data->groups_id)
@@ -148,7 +154,7 @@ class UserForm extends TCurtain
 
             TTransaction::close();
             
-            $notify = new TNotify('success', 'Operação foi realizada');
+            $notify = new TNotify('Sucesso', 'Operação foi realizada');
             $notify->enableNote();
             $notify->show();
             

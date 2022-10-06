@@ -358,7 +358,7 @@ class PersonForm extends TCurtain
             //Volta os dados para o form
             $this->form->setData($data);
            
-            $notify = new TNotify('success', 'Operação foi realizada');
+            $notify = new TNotify('Sucesso', 'Operação foi realizada');
             $notify->enableNote();
             $notify->show();
             
