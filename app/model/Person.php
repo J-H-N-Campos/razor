@@ -28,6 +28,21 @@ class Person extends TRecord
         parent::addAttribute('phone');
         parent::addAttribute('email');
     }
+
+    public function getOperator()
+    {
+        $person_individual = $this->getIndividual();
+
+        if($person_individual)
+        {
+            $operator = $person_individual->getOperators();
+
+            if($operator)
+            {
+                return $operator[0];
+            }
+        }
+    }
     
     public function get_init_word_name()
     {
@@ -264,6 +279,20 @@ class Person extends TRecord
         }
         
         parent::delete($id);   
+    }
+
+    public function removeOperator()
+    {
+        $operator = $this->getOperator();
+        
+        if($operator)
+        {
+            $operator->delete();
+        }
+        else
+        {
+            throw new Exception("Pessoa não possui operador");    
+        }
     }
     
     public function removeUser()

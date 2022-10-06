@@ -29,6 +29,20 @@ class User extends TRecord
         parent::addAttribute('fl_term');
         parent::addAttribute('description');
     }
+
+    public function createPassword()
+    {
+        $person = $this->getPerson();
+        
+        //Gera nova senha
+        $new_password   = TString::generatePassword();
+        $this->password = TString::encrypt($new_password);
+
+        //Enviar o email
+        UserService::sendNotification('USUARIO_CADASTRO', ['email'], $this, ['tmp_login' => $person->phone, 'tmp_password' => $new_password]);
+        
+        return $new_password;
+    }
     
     public function getUserConfig()
     {

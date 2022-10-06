@@ -22,6 +22,11 @@ class PersonIndividual extends TRecord
 		parent::addAttribute('cpf');
         parent::addAttribute('genre'); // m - f - 0
     }
+
+    public function getOperators()
+    {
+        return Operator::where('person_individual_id', '=', $this->person_id)->orderBy('id', 'desc')->get();
+    }
     
     public function getPerson()
     {
