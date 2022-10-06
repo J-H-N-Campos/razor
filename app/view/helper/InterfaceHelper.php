@@ -12,77 +12,6 @@
 
 class InterfaceHelper
 {
-    public static function getNameContract($contract)
-    {
-        $person         = $contract->getPerson();
-        $person_company = $person->getCompany();
-        $name           = $person->name;
-
-        if($person_company->name_fantasy)
-        {
-            $name = $person_company->name_fantasy;
-        }
-
-        return TString::getFistName($name);
-
-    }
-    public static function getMenuContracts($contracts, $current_contract)
-    {
-        $string = null;
-
-        //Retira o selecionado fora
-        unset($contracts[$current_contract->id]);
-
-
-        if($contracts)
-        {
-            foreach ($contracts as $key => $contract) 
-            {
-                $string .= '<li>';
-
-                $person         = $contract->getPerson();
-                $person_company = $person->getCompany();
-                $name           = $person->name;
-
-                if($person_company->name_fantasy)
-                {
-                    $name = $person_company->name_fantasy;
-                }
-
-                $string .= '<a class="media" href="index.php?class=LoginForm&method=chanceContract&key=' . $contract->id . '&static=1">
-                                <div class="media-left">
-                                    <i class="mdi mdi-mdi mdi-domain"></i>
-                                </div>
-                                <div class="media-body">
-                                    <p class="mar-no text-nowrap text-main text-semibold">' . $name . '</p>
-                                    <small> ' . TString::maskCnpj($person_company->cnpj) . '</small>
-                                </div>
-                            </a>';
-                $string .= '</li>';
-            }
-        }
-
-        return $string;
-    }
-
-    public static function getTitle($title, $icon = null)
-    {
-        return "<div class='page-title'><i class='{$icon}'></i> {$title}</div>";
-    }
-
-    public static function getInfo($title, $text)
-    {
-        return "<div class='content-info'>
-                    <div class='info-title'>{$title}</div>
-                    {$text}
-                </div>";
-    }
-
-    public static function getInfoView($code)
-    {
-        return "<a generator='adianti' class='link-info-view' href='index.php?class=InfoView&code={$code}'><i class='mdi mdi-help-circle'></i></a>";
-    }
-
     public static function checkMenuBar($class)
     {
         echo "<script>
@@ -171,7 +100,6 @@ class InterfaceHelper
     {
         $screens_menu   = $user->getScreensMenu();
         $person         = $user->getPerson();
-        $url_imagem     = '../app/images/logounivates.png';
         $operators       = UserService::getSession();
 
         $nav            = new TElement('div');
@@ -183,13 +111,9 @@ class InterfaceHelper
         //TOP
         $lane        = new TElement('div');
         $lane->class = "nav-lane-top art-nav";
+
         $boxer       = new TElement('div');
-        $boxer->add("<div class='client_logo' style=\"background: url('{$url_imagem}')\"></div><hr>");
-
-        //Menu de alerta
-        $ball = "<div class='ball-alert pulse-red' style='display: none'></div>";
-
-        //$boxer->add("<a  href='#' menu-target='8000'><i class='mdi mdi-bell-outline'></i>{$ball}</a>");
+        $boxer->add("<div class='logo-area'><img src='images/razor.png'></div>");
         $boxer->add("<a generator='adianti' href='index.php?class=MyProfileForm' menu-target='9000'><i class='mdi mdi-account-outline'></i></a><div class='nav-label'>Usuário</div>");
         $boxer->add("<a generator='adianti' href='index.php?class=LoginForm&method=updatePermissions&static=1' menu-target='9001'><i class='mdi mdi-reload'></i></a><div class='nav-label'>Atualizar</div>");
         
@@ -242,7 +166,6 @@ class InterfaceHelper
         $boxer       = new TElement('div');
         
         $lane->add($boxer);
-        $boxer->add("<div generator='adianti'   href='index.php?class=MyProfileForm'                    class='art-logo' style='cursor:pointer'>" . PersonHelper::getPhotoSmall($person, null, 3)  . "</div>");
         $boxer->add("<a generator='adianti'     href='index.php?class=LoginForm&method=onLogout&static=1' menu-target='8001'><i class='mdi mdi-location-exit'></i></a><div class='nav-label'>Sair</div>");
         $nav->add($lane);
         
