@@ -45,12 +45,6 @@ class UserService
                 $user->id           = $person->id;
                 $user->code         = TString::getCode();
                 $user->dt_register  = date('Y-m-d H:i:s');
-
-                if(!empty($param['lat']) AND $param['long'])
-                {
-                    $user->lat  = $param['lat'];
-                    $user->long = $param['long'];
-                }
                 
                 //Gera a nova senha
                 if(!empty($param['password']))
@@ -74,6 +68,8 @@ class UserService
                     $user->addGroup(new Group($ref_group));
                 }
             }
+            
+            $user->fl_on = $param['fl_on'];
 
             //Se não tem pip, cria
             if(!$user->pip_code)
