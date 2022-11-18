@@ -6,6 +6,6 @@
 
 ## Versão
 <!-- Use label=2 para por a versão e %2B para o caractere + -->
-<!-- <img src="https://img.shields.io/static/v1?label=1%2B&message=Produção&color=00d26a&style=for-the-badge&logo=ghost"/> -->
-<img src="https://img.shields.io/static/v1?label=1%2B&message=Devel&color=ff4f44&style=for-the-badge&logo=ghost"/>
+<!-- <img src="https://img.shields.io/static/v1?label=2%2B&message=Produção&color=00d26a&style=for-the-badge&logo=ghost"/> -->
+<img src="https://img.shields.io/static/v1?label=2%2B&message=Devel&color=ff4f44&style=for-the-badge&logo=ghost"/>
 <br/>
