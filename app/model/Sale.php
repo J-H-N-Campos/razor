@@ -26,6 +26,52 @@ class Sale extends TRecord
         parent::addAttribute('operator_id');
     }
 
+    public function store()
+    {
+        $dt_register_sale   = explode(' ', $this->dt_register_sale);
+        $dt_register_sale   = $dt_register_sale[1];
+        $dt_register_sale   = explode(':',  $dt_register_sale[1]);
+        $dt_register_sale   = $dt_register_sale[0];
+        $dt_register_sale   = intval($dt_register_sale);
+
+        if($dt_register_sale > 8 && $dt_register_sale < 18)
+        {
+            parent::store();
+        }
+        else
+        {
+            throw new Exception("Serviço não está sendo realizado nesse horário");
+        }
+    }
+
+    public function delete($id = NULL)
+    {  
+        $id = isset($id) ? $id : $this->id;
+
+        if($this->dt_service)
+        {
+            throw new Exception("Esse serviço já foi realizado");
+        }
+
+        $dt_now = explode(' ', date("Y-m-d H:i:s"));
+        $dt_now = explode(':',  $dt_now[1]);
+        $dt_now = $dt_now[0];
+
+        $dt_register_sale   = explode(' ', $this->dt_register_sale);
+        $dt_register_sale   = $dt_register_sale[1];
+        $dt_register_sale   = explode(':',  $dt_register_sale[1]);
+        $dt_register_sale   = $dt_register_sale[0];
+
+        $dt_validate = intval($dt_now) - intval($dt_register_sale); 
+
+        if($dt_validate < 2)
+        {
+            throw new Exception("Esse serviço não pode ser cancelado 2 horas antes");
+        }
+
+        parent::delete($id);   
+    }
+
     public function getPerson()
     {
         return new Person($this->person_id);
@@ -39,6 +85,29 @@ class Sale extends TRecord
     public function getProduct()
     {
         return new Product($this->product_id);
+    }
+
+    public static function serviceCompleted($sale_id, $dt_service)
+    {
+        if($sale_id)
+        {
+            $sale = self::where('id', '=', $sale_id)->get();
+
+            if($sale)
+            {
+                $sale = $sale[0];
+                $sale->dt_service = $dt_service;
+                $sale->store();
+            }
+            else
+            {
+                throw new Exception("Venda não existe");
+            }
+        }
+        else
+        {
+            throw new Exception("Venda não encontrada");
+        }
     }
 }
 ?>
